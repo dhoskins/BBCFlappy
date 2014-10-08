@@ -1,0 +1,187 @@
+REM MOVING MULTICOLOURED OBJECTS
+REM AN IMPROVED METHOD FOR MODE 2
+REM USING 80*256 BYTE COORDINATES
+
+REM Set up OSWRCH helpers
+OSWRCH=&FFEE:OSBYTE=&FFF4
+
+REM Set up mem pointers
+
+XCOORD=&70:YCOORD=&71
+
+width=&72:height=&73
+wcount=&74:LOC=&75
+STORE=&77:data=&79
+Yreg=&7B
+table1=&7C
+table2=&7E
+
+XCOORD1=&80:YCOORD1=&81
+
+DIM START 1000
+FOR PASS=0 TO 2 STEP 2
+P%=START
+RESTORE
+[
+OPT PASS
+
+\ Mode 2
+LDA #&16
+JSR OSWRCH
+LDA #2
+JSR OSWRCH
+
+LDA #(base MOD 256)
+STA table1
+LDA #(base DIV 256)
+STA table1+1
+
+\ 1 (0, 0)    2 (34, 200)
+LDA #0
+STA XCOORD1
+STA YCOORD1
+
+.LOOP
+    \ 1 moves diagonally down right
+	INC XCOORD1
+	INC YCOORD1
+
+    \ 2 moves up
+	DEC YCOORD2
+	JSR SCREEN
+
+    \ Carry on until 2 gets up to Y=80 then start again
+	LDA YCOORD2
+	CMP #80
+	BNE LOOP
+	BEQ START
+
+.SCREEN
+	\ Store address of first shape table in data, data+1
+	LDA table1
+	STA data
+	LDA table1+1
+	STA data+1
+
+	\ Wait for vertical blanking signal
+	LDA #&13	
+	JSR OSBYTE
+
+	\ Set X and Y parameters for draw module
+	LDX XCOORD1
+	LDY YCOORD1
+	JSR draw
+RTS
+
+\ The draw module,
+\ "data" contains pointer to the image data
+.draw
+	\ Save the passed parameters
+	STX XCOORD
+	STY YCOORD
+
+	\ Read in the width and height of the image
+	LDY #0
+	LDA (data),Y
+	STA height
+	INY
+	LDA (data),Y
+	STA width
+
+	LDX #2  \ Skip past two bytes of data (width and height) !!!
+
+\ "width" and "height" now contain the image width and height
+.newrow
+	LDA #0
+	STA Yreg  \ Set Y to 0
+	LDA width
+	STA wcount  \ Reset wcount to the width
+	JSR CALCADDRESS
+
+\ Place wcount columns of data a byte at a time
+.newcolumn
+	TXA
+	TAY \ Initialise Y to the current byte, so we can skip past width and height bytes
+	LDA (data),Y
+	LDY Yreg
+	STA (LOC),Y
+	TYA
+	ADC #8
+	STA Yreg
+	INX
+	DEC wcount
+	BNE newcolumn
+	INC YCOORD
+	DEC height
+	BNE newrow
+RTS
+
+
+\ &3000 + 8X + 16Y1 + 64Y1 + (Y MOD 8)
+\ This thing takes XCOORD, YCOORD and translates it to the byte in memory which
+\ corresponds to that screen location.
+\ Screen loacation is "returned" in LOC, LOC+1
+.CALCADDRESS
+	LDA #0
+	STA STORE+1
+	STA LOC
+	LDA XCOORD  	\ calc 8x
+	ASL A
+	ASL A
+	ROL STORE+1
+	ASL A
+	ROL STORE+1
+	STA STORE
+
+	LDA YCOORD      \ calc Y1=8(Y DIV 8) (i.e. round to a multiple of 8)
+	AND #&F8
+
+	LSR A           \ calc 64Y1, by shifting right twice and storing it as the high bit, nifty
+	LSR A
+	STA LOC+1
+
+	LSR A           \ calc 16Y1
+	LSR A
+	ROR LOC			\ rotate the carry in
+	ADC LOC+1       \ calc 80Y1
+	TAY
+
+	LDA YCOORD      \ calc Y%8
+	AND #7 			
+
+	ADC LOC			\ tot it all up
+	ADC STORE 		\ 8X low byte
+	STA LOC			\ low byte in loc
+	TYA 			\ 
+	ADC STORE+1 	\ 
+	ADC #&30 		\ 
+	STA LOC+1 		\ 
+RTS
+
+.base
+OPT FNdatatable(110)
+RTS
+]
+
+NEXT PASS
+CALL START
+
+DEF FNdatatable(N)
+FOR item=1 TO N
+READ D$
+D=EVAL("&"+D$)
+?P%=D:P%=P%+1
+NEXT item
+=PASS
+
+REM Here's the base!
+DATA  9, C
+DATA  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
+DATA  F, F, F, C, C, C, C, C, C, F, F, F
+DATA  F, F, E, C, C, C, C, C, D, F, F, F
+DATA  F, F, C, C, C, C, C, C, F, F, F, F
+DATA  F, E, C, C, C, C, C, D, F, F, F, F
+DATA  F, C, C, C, C, C, C, F, F, F, F, F
+DATA  E, C, C, C, C, C, D, F, F, F, F, F
+DATA  C, C, C, C, C, C, F, F, F, F, F, F
+DATA  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
