@@ -17,6 +17,7 @@ table1=&7C
 table2=&7E
 
 XCOORD1=&80:YCOORD1=&81
+XCOORD2=&82:YCOORD2=&83
 
 DIM START 1000
 FOR PASS=0 TO 2 STEP 2
@@ -40,6 +41,10 @@ STA table1+1
 LDA #0
 STA XCOORD1
 STA YCOORD1
+LDA #34
+STA XCOORD2
+LDA #200
+STA YCOORD2
 
 .LOOP
     \ 1 moves diagonally down right
@@ -57,7 +62,7 @@ STA YCOORD1
 	BEQ START
 
 .SCREEN
-	\ Store address of first shape table in data, data+1
+	\ Store address of first shape table in data
 	LDA table1
 	STA data
 	LDA table1+1
@@ -70,6 +75,15 @@ STA YCOORD1
 	\ Set X and Y parameters for draw module
 	LDX XCOORD1
 	LDY YCOORD1
+	JSR draw
+
+	\ Repeat for second shape table
+	LDA base
+	STA data
+	LDA base+1
+	STA data+1
+	LDX XCOORD2
+	LDY YCOORD2
 	JSR draw
 RTS
 
