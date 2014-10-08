@@ -1,0 +1,108 @@
+REM PROGRAMMING THE 6845 CRTC
+REM SIDEWAYS SCROLLING BY DIRECTLY
+REM ADDRESSING SHEILA LOCATIONS
+
+OSWRCH=&FFEE:OSBYTE=&FFF4
+SCR=&70
+
+DIM START 1000
+FOR PASS=0 TO 3 STEP 3
+P%=START
+RESTORE
+
+PROCvdu(29)
+
+REM SET UP TEST GRAPHICS SCREEN
+
+REM Mode 2
+DATA 22,2
+
+REM Background colour
+DATA 18,0,132
+
+REM Clear screen
+DATA 16
+
+REM Set foreground colour 
+DATA 18,0,3
+
+REM PLOT the square
+REM Move to absolute point 500,500
+DATA 25,4,500@,500@
+
+REM Draw to 200,0 relative to current position
+DATA 25,1,200@,0@
+
+REM Move to 0,-200 relative and fill triangle
+DATA 25,81,0@,-200@
+
+REM Draw to -200,0 relative
+DATA 25,1,-200@,0@
+
+REM Move to 0, 200 relative and fill triangle
+DATA 25,81,0@,200@
+
+[
+OPT PASS
+.BEGIN
+	LDA #&00
+	STA SCR
+	LDA #&06
+	STA SCR+1
+.SCROLL
+	\ Wait for screen sync
+	LDA #&13
+	JSR OSBYTE
+
+	\ 12 and 13 are the screen start address
+	\ Store low byte at reg 13
+	LDA #13
+	STA &FE00
+	LDA SCR
+	STA &FE01
+
+	\ If low byte's 0 store high byte at reg 12
+	BNE OVER
+	LDA #12
+	STA &FE00
+	LDA SCR+1
+	STA &FE01
+.OVER
+	INC SCR
+	BNE SKIP
+	INC SCR+1
+.SKIP
+	LDA SCR
+	BNE SCROLL
+	LDA SCR+1
+	CMP #&10
+	BNE SCROLL
+	BEQ BEGIN
+RTS
+]
+
+NEXT PASS
+
+CALL START
+END
+
+REM ==============================
+
+DEFPROCvdu(N)
+	LOCAL D,D$,B,byte,item,lbyte
+	FOR item=1 TO N
+		READ D$
+		IF RIGHT$(D$,1)="@" THEN B=2 ELSE B=1
+		D=EVAL(D$)
+		IF ASC(D$)>64 THEN [OPT PASS:LDA D :JSR OSWRCH:]:NEXT item
+		IF D<0 THEN D=(ABS(D) EOR &FFFF)+1
+		byte=D MOD 256:PROCform
+		IF B=2 THEN byte=D DIV 256:PROCform
+	NEXT item
+ENDPROC
+
+DEFPROCform
+	IF byte<>lbyte THEN [OPT PASS:LDA#byte:]
+	[OPT PASS:JSR OSWRCH:]
+	lbyte=byte
+ENDPROC
