@@ -38,7 +38,7 @@ OPT PASS
   LDA #0
   STA CTR
   
-.loop                                                                                                     \              -----
+.loop
   JSR calcScrollActual
   JSR paint
   JSR move
@@ -222,10 +222,34 @@ RTS
   STA LOC+1
 RTS
 
+.baseData
+  OPT FNdatatable((&8*&C) + 2)
+RTS
+
 ]
 NEXT PASS
 
 P. P%-BLAH
 CALL BLAH
 END
+
+DEF FNdatatable(N)
+FOR item=1 TO N
+READ D$
+D=EVAL("&"+D$)
+?P%=D:P%=P%+1
+NEXT item
+=PASS
+
+REM Here's the base!
+DATA  8, C
+REM 100 (0x60) in total
+DATA  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
+DATA  F, F, F, C, C, C, C, C, C, F, F, F
+DATA  F, F, E, C, C, C, C, C, D, F, F, F
+DATA  F, F, C, C, C, C, C, C, F, F, F, F
+DATA  F, E, C, C, C, C, C, D, F, F, F, F
+DATA  F, C, C, C, C, C, C, F, F, F, F, F
+DATA  E, C, C, C, C, C, D, F, F, F, F, F
+DATA  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
 
