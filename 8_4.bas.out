@@ -17,7 +17,6 @@ table1=&7C
 table2=&7E
 
 XCOORD1=&80:YCOORD1=&81
-XCOORD2=&82:YCOORD2=&83
 
 DIM START 1000
 FOR PASS=0 TO 2 STEP 2
@@ -32,31 +31,23 @@ JSR OSWRCH
 LDA #2
 JSR OSWRCH
 
+\ Store the address of base at table1, table1+1
 LDA #(base MOD 256)
 STA table1
 LDA #(base DIV 256)
 STA table1+1
 
-\ 1 (0, 0)    2 (34, 200)
+\ 1 (0, 0) 
 LDA #0
 STA XCOORD1
 STA YCOORD1
-LDA #34
-STA XCOORD2
-LDA #200
-STA YCOORD2
 
 .LOOP
     \ 1 moves diagonally down right
 	INC XCOORD1
 	INC YCOORD1
 
-    \ 2 moves up
-	DEC YCOORD2
-	JSR SCREEN
-
-    \ Carry on until 2 gets up to Y=80 then start again
-	LDA YCOORD2
+	LDA YCOORD1
 	CMP #80
 	BNE LOOP
 	BEQ START
@@ -75,15 +66,6 @@ STA YCOORD2
 	\ Set X and Y parameters for draw module
 	LDX XCOORD1
 	LDY YCOORD1
-	JSR draw
-
-	\ Repeat for second shape table
-	LDA base
-	STA data
-	LDA base+1
-	STA data+1
-	LDX XCOORD2
-	LDY YCOORD2
 	JSR draw
 RTS
 
@@ -112,20 +94,20 @@ RTS
 	STA wcount  \ Reset wcount to the width
 	JSR CALCADDRESS
 
-\ Place wcount columns of data a byte at a time
+\ Place a single byte of wcount columns of data
 .newcolumn
 	TXA
-	TAY \ Initialise Y to the current byte, so we can skip past width and height bytes
+	TAY     \ Initialise Y to the current byte, so we can skip past width and height bytes
 	LDA (data),Y
 	LDY Yreg
 	STA (LOC),Y
 	TYA
-	ADC #8
+	ADC #8  
 	STA Yreg
-	INX
+	INX	     \ Bump X so we paint at the next byte along, it will be the Y next time
 	DEC wcount
-	BNE newcolumn
-	INC YCOORD
+	BNE newcolumn  \ If we've not got to the end of the row, paint the next column
+	INC YCOORD 
 	DEC height
 	BNE newrow
 RTS
