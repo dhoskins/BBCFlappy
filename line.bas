@@ -58,15 +58,24 @@ JMP loop
 
 .paintLoop
   JSR CALCADDRESS
+  LDY #0
+
+.paintInner
+
   JSR calcColor
   TXA
-  LDY #0
   STA (LOC),Y  \ Indirect addressing, see chapter 5 of Creative Assembler
 
   INC YCOORD
   LDA YCOORD
   CMP #0
-  BNE paintLoop
+  BEQ done
+
+  INY
+  TYA
+  CMP #8
+  BEQ paintLoop
+  JMP paintInner
 RTS
 
 .calcColor
