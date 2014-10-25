@@ -8,9 +8,14 @@ XCOORD=&72:YCOORD=&73
 STORE=&74:REM and &75
 LOC=&76:REM and &77
 scrollActual=&78:REM and &79
-MAGIC_Y=&7A
-CTR=&7B
-COLOUR 129
+baseTable=&7B: REM and &7C
+baseCurCol=&7D
+baseStart=255-8
+baseW=&C
+baseCtr=&7E
+tempY=&7F
+baseOffset=&80
+
 FOR PASS=0 TO 3 STEP 3
 P% = BLAH
 RESTORE
@@ -23,47 +28,53 @@ OPT PASS
   LDA #2
   JSR OSWRCH
 
-  LDA #128
-  STA MAGIC_Y
-
   \ initialise the scroll offset to 0x600
   LDA #0
   STA scrollOffset
+  STA baseCurCol
+  STA baseOffset
+
   LDA #6
   STA scrollOffset+1
 
   LDA #79
   STA XCOORD
 
-  LDA #0
-  STA CTR
-  
+  LDA #(baseData MOD 256)
+  STA baseTable
+  LDA #(baseData DIV 256)
+  STA baseTable+1
+
 .loop
   JSR calcScrollActual
   JSR paint
+  JSR bumpBaseCurCol
   JSR move
 
   LDA #&13
   JSR OSBYTE  
 
   JSR bumpScroll    
-
-
-
 JMP loop
 
 .paint
   LDA #0
   STA YCOORD
 
-.paintLoop
+\ Initialise baseOffset to be the baseCurCol
+  LDA baseCurCol
+  STA baseOffset
+
+\ We only calculate address every 8 pixels
+\ Y is the count to the next 8
+.paintNext8
   JSR CALCADDRESS
   LDY #0
 
 .paintInner
-
   JSR calcColor
   TXA
+
   STA (LOC),Y  \ Indirect addressing, see chapter 5 of Creative Assembler
 
   INC YCOORD
@@ -72,21 +83,44 @@ JMP loop
   BEQ done
 
   INY
-  TYA
+  TYA  \ compare Y to #8, need to do it via accumulator
   CMP #8
-  BEQ paintLoop
+  BEQ paintNext8
   JMP paintInner
 RTS
 
 .calcColor
-  LDA YCOORD
-  CMP MAGIC_Y
-  BEQ loadWhiteX
-  LDX #3
+  LDA #baseStart
+  CMP YCOORD
+  BCS loadBG
+
+  TYA         \ store Y in tempY, because we need it to offset the base
+  STA tempY
+
+  LDA baseOffset  
+  TAY
+
+  CLC
+  ADC baseW
+  STA baseOffset
+
+  LDA (baseTable),Y
+  TAX       \ Got the colour, put it in X
+  LDA tempY \ And restore Y
+  TAY
 RTS
 
-.loadWhiteX
-  LDX #&3F
+.loadBG
+  LDX #&3C
+RTS
+
+.bumpBaseCurCol
+  INC baseCurCol
+  LDA baseCurCol
+  CMP baseW
+  BNE done
+  LDA #0
+  STA baseCurCol
 RTS
 
 .move
