@@ -1,3 +1,9 @@
+REM Sprite layers
+REM BG with scrolling base
+REM Then static scenery
+REM Then scrolling pipes
+REM Then flappy
+
 DIM BLAH 500
 OSWRCH=&FFEE:OSBYTE=&FFF4
 
@@ -5,8 +11,8 @@ seed=TIME
 
 scrollOffset=&70:REM and &71
 XCOORD=&72:YCOORD=&73
-STORE=&74:REM and &75
-LOC=&76:REM and &77
+STORE=&74:REM and &75 -- temporary variable for calcaddress
+LOC=&76:REM and &77   -- return value for calcaddress
 scrollActual=&78:REM and &79
 baseTable=&7B: REM and &7C
 baseCurCol=&7D
@@ -37,9 +43,6 @@ OPT PASS
   LDA #6
   STA scrollOffset+1
 
-  LDA #79
-  STA XCOORD
-
   LDA #(baseData MOD 256)
   STA baseTable
   LDA #(baseData DIV 256)
@@ -47,17 +50,21 @@ OPT PASS
 
 .loop
   JSR calcScrollActual
-  JSR paint
-  JSR bumpBaseCurCol
-  JSR move
+  JSR paintScrolling
+  JSR paintNonScrolling
 
   LDA #&13
-  JSR OSBYTE  
+  JSR OSBYTE
 
-  JSR bumpScroll    
+  JSR bumpBaseCurCol
+  JSR bumpScroll
+
 JMP loop
 
-.paint
+\ Paint the rightmost strip
+.paintScrolling
+  LDA #79
+  STA XCOORD
   LDA #0
   STA YCOORD
 
@@ -94,14 +101,16 @@ RTS
   CMP YCOORD
   BCS loadBG
 
-  TYA         \ store Y in tempY, because we need it to offset the base
+  \ ok we need to paint the base
+  \ store Y in tempY, because we need it to offset the base
+  TYA         
   STA tempY
 
   LDA baseOffset  
   TAY
 
   CLC
-  ADC baseW
+  ADC #baseW
   STA baseOffset
 
   LDA (baseTable),Y
@@ -117,19 +126,34 @@ RTS
 .bumpBaseCurCol
   INC baseCurCol
   LDA baseCurCol
-  CMP baseW
-  BNE done
+  CMP #baseW 
+  BCC done
   LDA #0
   STA baseCurCol
 RTS
 
-.move
-  \ Now adjust the pixel Y
- \ JSR rnd
-  
-  \CMP #&7F
-  \BPL increment
-  \JSR decrement
+.paintNonScrolling
+  LDA #20
+  STA XCOORD
+  LDA #40
+  STA YCOORD
+  JSR CALCADDRESS
+
+  LDA #0
+  TAY
+
+  LDA #&1D
+  STA (LOC),Y
+
+  LDA #19
+  STA XCOORD
+  LDA #40
+  STA YCOORD
+  JSR CALCADDRESS
+  LDA #0
+  TAY
+  LDA #&3C
+  STA (LOC),Y
 RTS
 
 .resetX
@@ -137,12 +161,7 @@ RTS
   STA XCOORD
 RTS
 
-.increment
-  INC YCOORD
-RTS
-
-.decrement
-  DEC YCOORD
+.done
 RTS
 
 .bumpScroll
@@ -168,9 +187,6 @@ RTS
 .setHighScroll
   LDA #&C            : STA &FE00
   LDA scrollOffset+1 : STA &FE01
-RTS
-
-.done
 RTS
 
 .rnd
@@ -222,7 +238,6 @@ RTS
   STA STORE+1
   STA LOC
 
-
   LDA XCOORD    \ calc 8x
   ASL A
   ASL A
@@ -258,15 +273,17 @@ RTS
 
   \ Figure out if we've gone over &7FFF
   CMP #&80
-  BMI done
+  BCS scrollModulus
+RTS
 
+.scrollModulus
   SEC
   SBC #&50
   STA LOC+1
 RTS
 
 .baseData
-  OPT FNdatatable((&8*&C) + 2)
+  OPT FNdatatable((&8*&C))
 RTS
 
 ]
@@ -285,7 +302,7 @@ NEXT item
 =PASS
 
 REM Here's the base!
-DATA  8, C
+REM DATA  8, C
 REM 100 (0x60) in total
 DATA  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
 DATA  F, F, F, C, C, C, C, C, C, F, F, F
@@ -296,3 +313,4 @@ DATA  F, C, C, C, C, C, C, F, F, F, F, F
 DATA  E, C, C, C, C, C, D, F, F, F, F, F
 DATA  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
 
+REM Here are the background widgets
