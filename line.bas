@@ -37,7 +37,6 @@ OPT PASS
   LDA #0
   STA scrollOffset
   STA baseCurCol
-  STA baseOffset
 
   LDA #6
   STA scrollOffset+1
@@ -126,7 +125,7 @@ RTS
 .bumpBaseCurCol
   INC baseCurCol
   LDA baseCurCol
-  CMP #baseW 
+  CMP #baseW
   BCC done
   LDA #0
   STA baseCurCol
