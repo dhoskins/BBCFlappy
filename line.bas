@@ -4,26 +4,25 @@ REM Then static scenery
 REM Then scrolling pipes
 REM Then flappy
 
-DIM BLAH 500
+DIM BLAH% 500
 OSWRCH=&FFEE:OSBYTE=&FFF4
 
 seed=TIME
 
 scrollOffset=&70:REM and &71
-XCOORD=&72:YCOORD=&73
-STORE=&74:REM and &75 -- temporary variable for calcaddress
-LOC=&76:REM and &77   -- return value for calcaddress
+XCOORD=&72:YCOORD=&73:REM     -- parameters to calcaddress
+STORE=&74:REM and &75         -- temporary variable for calcaddress
+LOC=&76:REM and &77           -- return value for calcaddress
 scrollActual=&78:REM and &79
 baseTable=&7B: REM and &7C
 baseCurCol=&7D
+
 baseStart=255-8
-baseW=&C
-baseCtr=&7E
-tempY=&7F
+baseW=&10
 baseOffset=&80
 
 FOR PASS=0 TO 3 STEP 3
-P% = BLAH
+P% = BLAH%
 RESTORE
 [
 OPT PASS
@@ -104,7 +103,7 @@ RTS
   \ ok we need to paint the base
   \ store Y in tempY, because we need it to offset the base
   TYA         
-  STA tempY
+  STA STORE
 
   LDA baseOffset  
   TAY
@@ -113,9 +112,10 @@ RTS
   ADC #baseW
   STA baseOffset
 
+
   LDA (baseTable),Y
   TAX       \ Got the colour, put it in X
-  LDA tempY \ And restore Y
+  LDA STORE \ And restore Y
   TAY
 RTS
 
@@ -283,14 +283,16 @@ RTS
 RTS
 
 .baseData
-  OPT FNdatatable((&8*&C))
+  OPT FNdatatable((&8*&8*2))
 RTS
 
 ]
 NEXT PASS
 
-P. P%-BLAH
-CALL BLAH
+P. ~BLAH%
+P. ~P%
+P. ~(P%-BLAH%)
+CALL BLAH%
 END
 
 DEF FNdatatable(N)
@@ -304,13 +306,13 @@ NEXT item
 REM Here's the base!
 REM DATA  8, C
 REM 100 (0x60) in total
-DATA  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
-DATA  F, F, F, C, C, C, C, C, C, F, F, F
-DATA  F, F, E, C, C, C, C, C, D, F, F, F
-DATA  F, F, C, C, C, C, C, C, F, F, F, F
-DATA  F, E, C, C, C, C, C, D, F, F, F, F
-DATA  F, C, C, C, C, C, C, F, F, F, F, F
-DATA  E, C, C, C, C, C, D, F, F, F, F, F
-DATA  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
+DATA  3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3
+DATA  F,F,F,C,C,C,C,C,C,C,C,F,F,F,F,F
+DATA  F,F,E,C,C,C,C,C,C,C,D,F,F,F,F,F
+DATA  F,F,C,C,C,C,C,C,C,C,F,F,F,F,F,F
+DATA  F,E,C,C,C,C,C,C,C,D,F,F,F,F,F,F
+DATA  F,C,C,C,C,C,C,C,C,F,F,F,F,F,F,F
+DATA  E,C,C,C,C,C,C,C,D,F,F,F,F,F,F,F
+DATA  3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3
 
 REM Here are the background widgets
