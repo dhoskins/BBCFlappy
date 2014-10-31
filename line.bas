@@ -4,7 +4,7 @@ REM Then static scenery
 REM Then scrolling pipes
 REM Then flappy
 
-DIM BLAH% 500
+DIM BLAH% &200
 OSWRCH=&FFEE:OSBYTE=&FFF4
 
 seed=TIME
@@ -18,8 +18,9 @@ baseTable=&7B: REM and &7C
 baseCurCol=&7D
 
 baseStart=255-8
-baseW=&10
+baseW=&8
 baseOffset=&80
+
 
 FOR PASS=0 TO 3 STEP 3
 P% = BLAH%
@@ -27,18 +28,18 @@ RESTORE
 [
 OPT PASS
 .BEGIN
-  \ Mode 2
-  LDA #22
-  JSR OSWRCH
-  LDA #2
-  JSR OSWRCH
+  \ Mode 5, errrk
+ \ LDA #22
+ \ JSR OSWRCH
+ \ LDA #5
+ \ JSR OSWRCH
 
-  \ initialise the scroll offset to 0x600
+  \ initialise the scroll offset to 0xB00 (for mode 5)
   LDA #0
   STA scrollOffset
   STA baseCurCol
 
-  LDA #6
+  LDA #&B
   STA scrollOffset+1
 
   LDA #(baseData MOD 256)
@@ -61,7 +62,7 @@ JMP loop
 
 \ Paint the rightmost strip
 .paintScrolling
-  LDA #79
+  LDA #39
   STA XCOORD
   LDA #0
   STA YCOORD
@@ -119,7 +120,7 @@ RTS
 RTS
 
 .loadBG
-  LDX #&3C
+  LDX #&F
 RTS
 
 .bumpBaseCurCol
@@ -151,7 +152,7 @@ RTS
   JSR CALCADDRESS
   LDA #0
   TAY
-  LDA #&3C
+  LDA #&F
   STA (LOC),Y
 RTS
 
@@ -178,7 +179,7 @@ RTS
   CMP #&10
   BNE setHighScroll
 
-  LDA #6
+  LDA #&B
   STA scrollOffset+1
   JSR setHighScroll
 RTS
@@ -227,10 +228,15 @@ RTS
   ASL scrollActual
 RTS
 
-\ &3000 + 8X + 16Y1 + 64Y1 + (Y MOD 8)
+\ &3000 + 8X + 16Y1 + 64Y1 + (Y % 8) where Y1=8(Y/8) for mode 2
+\ &5800 + 8X +  8Y1 + 32Y1 + (Y % 8) where Y1=8(Y/8) for mode 5
+\ (39,255) = &7FFF, y1=248
+\ &3000 + 632 + 19840
+\ &5800 + 312 + 9920 + 7
 \ This thing takes XCOORD, YCOORD and translates it to the byte in memory which
 \ corresponds to that screen location.
 \ Screen location is "returned" in LOC, LOC+1
+\ 248 * 32 = 7936
 .CALCADDRESS
   \reset vars to 0
   LDA #0
@@ -238,9 +244,10 @@ RTS
   STA LOC
 
   LDA XCOORD    \ calc 8x
+  \ Don't need to ROL for first two bits as 39 is the max, 
+  \ and first two bits will be 0 anyway
   ASL A
   ASL A
-  ROL STORE+1
   ASL A
   ROL STORE+1
   STA STORE
@@ -248,11 +255,13 @@ RTS
   LDA YCOORD      \ calc Y1=8(Y DIV 8) (i.e. round to a multiple of 8)
   AND #&F8
 
-  LSR A           \ calc 64Y1, by shifting right twice and storing it as the high bit, nifty
+  LSR A           \ calc 32Y1, by shifting right three times and storing it as the high bit, nifty
+  LSR A
   LSR A
   STA LOC+1
 
-  LSR A           \ calc 16Y1
+  LSR A           \ calc 8Y1 (same as 16Y1 in Mode 2 because we only multiplied by 32 not 64 in the last step)
+  ROR LOC     \ rotate the carry in
   LSR A
   ROR LOC     \ rotate the carry in
   ADC LOC+1       \ calc 80Y1
@@ -277,12 +286,13 @@ RTS
 
 .scrollModulus
   SEC
-  SBC #&50
+  \ Wrap back round to &5800
+  SBC #&28
   STA LOC+1
 RTS
 
 .baseData
-  OPT FNdatatable((&8*&8*2))
+  OPT FNdatatable((&8*&8))
 RTS
 
 ]
@@ -291,6 +301,17 @@ NEXT PASS
 P. ~BLAH%
 P. ~P%
 P. ~(P%-BLAH%)
+
+
+REM SETUP
+REM This will need to go in a loader or something
+MODE 5
+
+VDU 19,0,0,0,0,0  : REM Colour 0 is black
+VDU 19,1,6,0,0,0  : REM Colour 1 is cyan
+VDU 19,2,3,0,0,0  : REM Colour 2 is yellow
+VDU 19,3,2,0,0,0  : REM Colour 3 is green
+
 CALL BLAH%
 END
 
@@ -305,13 +326,13 @@ NEXT item
 REM Here's the base!
 REM DATA  8, C
 REM 100 (0x60) in total
-DATA  3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3
-DATA  F,F,F,C,C,C,C,C,C,C,C,F,F,F,F,F
-DATA  F,F,E,C,C,C,C,C,C,C,D,F,F,F,F,F
-DATA  F,F,C,C,C,C,C,C,C,C,F,F,F,F,F,F
-DATA  F,E,C,C,C,C,C,C,C,D,F,F,F,F,F,F
-DATA  F,C,C,C,C,C,C,C,C,F,F,F,F,F,F,F
-DATA  E,C,C,C,C,C,C,C,D,F,F,F,F,F,F,F
-DATA  3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3
+DATA 55,55,55,55,55,55,55,55
+DATA F0,F1,FF,FF,FF,FE,F0,F0
+DATA F0,FC,FF,FF,FF,FE,F0,F0
+DATA F0,FC,FF,FF,F1,FE,F0,F0
+DATA F0,FC,FF,F1,FF,FE,F0,F0
+DATA F0,FC,FF,FF,FF,FE,F0,F0
+DATA F0,FC,FF,FF,FF,FE,F0,F0
+DATA 55,55,55,55,55,55,55,55
 
 REM Here are the background widgets
