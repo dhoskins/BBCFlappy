@@ -9,17 +9,22 @@ OSWRCH=&FFEE:OSBYTE=&FFF4
 
 seed=TIME
 
-scrollOffset=&70:REM and &71
-XCOORD=&72:YCOORD=&73:REM     -- parameters to calcaddress
-STORE=&74:REM and &75         -- temporary variable for calcaddress
-LOC=&76:REM and &77           -- return value for calcaddress
-scrollActual=&78:REM and &79
-baseTable=&7B: REM and &7C
-baseCurCol=&7D
+scrollOffset=&70      :REM and &71
+XCOORD=&72:YCOORD=&73 :REM     -- parameters to calcaddress
+STORE=&74             :REM and &75         -- temporary variable for calcaddress
+LOC=&76               :REM and &77           -- return value for calcaddress
+scrollActual=&78      :REM and &79
+baseTable=&7A         :REM and &7B
+baseCurCol=&7C
+baseOffset=&7D
+data=&7E:REM and &7F -- Parameter for plotSprite
+flappyTable=&80:REM and &81 -- flappy bird sprite
+width=&82:height=&83
+Yreg=&84:wcount=&85
+
 
 baseStart=255-8
 baseW=&8
-baseOffset=&80
 
 
 FOR PASS=0 TO 3 STEP 3
@@ -28,12 +33,6 @@ RESTORE
 [
 OPT PASS
 .BEGIN
-  \ Mode 5, errrk
- \ LDA #22
- \ JSR OSWRCH
- \ LDA #5
- \ JSR OSWRCH
-
   \ initialise the scroll offset to 0xB00 (for mode 5)
   LDA #0
   STA scrollOffset
@@ -47,10 +46,16 @@ OPT PASS
   LDA #(baseData DIV 256)
   STA baseTable+1
 
+  LDA #(flappyData MOD 256)
+  STA flappyTable
+  LDA #(flappyData DIV 256)
+  STA flappyTable+1
+
 .loop
   JSR calcScrollActual
   JSR paintScrolling
-  JSR paintNonScrolling
+  JSR paintNonScrolling 
+  JSR paintFlappy
 
   LDA #&13
   JSR OSBYTE
@@ -59,6 +64,9 @@ OPT PASS
   JSR bumpScroll
 
 JMP loop
+
+.paintDone
+RTS
 
 \ Paint the rightmost strip
 .paintScrolling
@@ -86,7 +94,7 @@ JMP loop
   INC YCOORD
   LDA YCOORD
   CMP #0
-  BEQ done
+  BEQ paintDone
 
   INY
   TYA  \ compare Y to #8, need to do it via accumulator
@@ -120,7 +128,7 @@ RTS
 RTS
 
 .loadBG
-  LDX #&F
+  LDX #0 \ background is colour 0
 RTS
 
 .bumpBaseCurCol
@@ -152,9 +160,21 @@ RTS
   JSR CALCADDRESS
   LDA #0
   TAY
-  LDA #&F
+  LDA #0 \ background is colour 0
   STA (LOC),Y
 RTS
+
+.paintFlappy
+  LDA flappyTable
+  STA data
+  LDA flappyTable+1
+  STA data+1
+  LDA #10
+  TAX
+  TAY
+  JSR plotSprite
+RTS
+
 
 .resetX
   LDA #0
@@ -200,6 +220,51 @@ RTS
   ROL seed
   LDA seed 
 RTS
+
+\ The draw module,
+\ "data" contains pointer to the image data
+.plotSprite
+  \ Save the passed parameters
+  STX XCOORD
+  STY YCOORD
+
+\ Read in the width and height of the image
+  LDY #0
+  LDA (data),Y
+  STA height
+  INY
+  LDA (data),Y
+  STA width
+
+  LDX #2  \ Skip past two bytes of data (width and height) !!!
+
+\ "width" and "height" now contain the image width and height
+.newrow
+  LDA #0
+  STA Yreg  \ Set Y to 0
+  LDA width
+  STA wcount  \ Reset wcount to the width
+  JSR CALCADDRESS
+
+\ Place a single byte of wcount columns of data
+.newcolumn
+  TXA
+  TAY     \ Initialise Y to the current byte, so we can skip past width and height bytes
+  LDA (data),Y
+  LDY Yreg
+  STA (LOC),Y
+  TYA
+  ADC #8  
+  STA Yreg
+  INX      \ Bump X so we paint at the next byte along, it will be the Y next time
+  DEC wcount
+  BNE newcolumn  \ If we've not got to the end of the row, paint the next column
+  INC YCOORD 
+  DEC height
+  BNE newrow
+RTS
+
+
 
 .calcScrollActual
   LDA scrollOffset
@@ -294,6 +359,9 @@ RTS
 .baseData
   OPT FNdatatable((&8*&8))
 RTS
+.flappyData
+  OPT FNdatatable(4*4+2)
+RTS
 
 ]
 NEXT PASS
@@ -307,10 +375,15 @@ REM SETUP
 REM This will need to go in a loader or something
 MODE 5
 
-VDU 19,0,0,0,0,0  : REM Colour 0 is black
-VDU 19,1,6,0,0,0  : REM Colour 1 is cyan
-VDU 19,2,3,0,0,0  : REM Colour 2 is yellow
-VDU 19,3,2,0,0,0  : REM Colour 3 is green
+RED=1
+CYAN=6
+YELLOW=3
+GREEN=2
+
+VDU 19,0,CYAN,0,0,0
+VDU 19,1,RED,0,0,0
+VDU 19,2,YELLOW,0,0,0 
+VDU 19,3,GREEN,0,0,0 
 
 CALL BLAH%
 END
@@ -326,13 +399,18 @@ NEXT item
 REM Here's the base!
 REM DATA  8, C
 REM 100 (0x60) in total
-DATA 55,55,55,55,55,55,55,55
+DATA FF,FF,FF,FF,FF,FF,FF,FF
 DATA F0,F1,FF,FF,FF,FE,F0,F0
 DATA F0,FC,FF,FF,FF,FE,F0,F0
 DATA F0,FC,FF,FF,F1,FE,F0,F0
 DATA F0,FC,FF,F1,FF,FE,F0,F0
 DATA F0,FC,FF,FF,FF,FE,F0,F0
 DATA F0,FC,FF,FF,FF,FE,F0,F0
-DATA 55,55,55,55,55,55,55,55
+DATA FF,FF,FF,FF,FF,FF,FF,FF
 
-REM Here are the background widgets
+REM Here's Flappy 4x11
+DATA 4,4
+DATA 0F,0F,0F,0F
+DATA 0F,FF,FF,0F
+DATA 0F,FF,FF,0F
+DATA 0F,0F,0F,0F
