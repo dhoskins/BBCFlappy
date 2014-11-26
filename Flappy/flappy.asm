@@ -1,84 +1,92 @@
-REM Sprite layers
-REM BG with scrolling base
-REM Then static scenery
-REM Then scrolling pipes
-REM Then flappy
-
-DIM BLAH% 500
 OSWRCH=&FFEE:OSBYTE=&FFF4
-
-seed=TIME
-
-XCOORD=&72:YCOORD=&73:REM     -- parameters to calcaddress
-STORE=&74:REM and &75         -- temporary variable for calcaddress
-LOC=&76:REM and &77           -- return value for calcaddress
-REM scrollActual=&78:REM and &79
-baseTable=&7B: REM and &7C
-
-baseStart=255-8
+seed=1
+baseStart=&F7
 baseW=&10
 
-FOR PASS=0 TO 3 STEP 3
-P% = BLAH%
-RESTORE
-[
-OPT PASS
+scrollOffset=&70
+xcoord=&72
+ycoord=&73
+store=&74
+loc=&76
+scrollActual=&78
+baseTable=&7B
+baseCurCol=&7D
+baseOffset=&7E
 
-.scrollActual
-  NOP
-  NOP
+GUARD &3000
+ORG &1900
 
-.scrollOffset
-  NOP
-  NOP
+.start
+	LDA #22
+	JSR OSWRCH
+	LDA #2
+	JSR OSWRCH
 
-.baseCurCol
-  NOP
-
-.baseOffset
-  NOP
-
-.BEGIN
-  \ Mode 2
-  LDA #22
-  JSR OSWRCH
-  LDA #2
-  JSR OSWRCH
-
-  \ initialise the scroll offset to 0x600
+	LDA #6
+	STA scrollOffset+1
   LDA #0
   STA scrollOffset
-  STA baseCurCol
-
-  LDA #6
-  STA scrollOffset+1
-
-  LDA #(baseData MOD 256)
-  STA baseTable
-  LDA #(baseData DIV 256)
-  STA baseTable+1
+	LDA #(base MOD 256)
+	STA baseTable
+	LDA #(base DIV 256)
+	STA baseTable+1
 
 .loop
   JSR calcScrollActual
   JSR paintScrolling
   JSR paintNonScrolling
 
-\  JSR checkKey
+  \JSR checkKey
 
   LDA #&13
   JSR OSBYTE
 
   JSR bumpBaseCurCol
   JSR bumpScroll
-
 JMP loop
+
+.checkKey
+  LDA #19
+  STA xcoord
+  LDA #20
+  STA ycoord
+  JSR CALCADDRESS
+  LDA #0
+  TAY
+  LDA #&3C
+  STA (loc),Y
+  
+  LDA #&81
+  LDX #&FF
+  LDY #&FF
+  JSR OSBYTE
+
+  TXA
+  CMP #&FF
+  BEQ drawPixel
+RTS
+
+.drawPixel
+  LDA #20
+  STA xcoord
+  LDA #20
+  STA ycoord
+  JSR CALCADDRESS
+
+  LDA #0
+  TAY
+
+  LDA #&0
+  STA (loc),Y
+RTS
+
 
 \ Paint the rightmost strip
 .paintScrolling
   LDA #79
-  STA XCOORD
+  STA xcoord
   LDA #0
-  STA YCOORD
+  STA ycoord
 
 \ Initialise baseOffset to be the baseCurCol
   LDA baseCurCol
@@ -94,10 +102,10 @@ JMP loop
   JSR calcColor
   TXA
 
-  STA (LOC),Y  \ Indirect addressing, see chapter 5 of Creative Assembler
+  STA (loc),Y  \ Indirect addressing, see chapter 5 of Creative Assembler
 
-  INC YCOORD
-  LDA YCOORD
+  INC ycoord
+  LDA ycoord
   CMP #0
   BEQ done
 
@@ -109,26 +117,26 @@ JMP loop
 RTS
 
 .calcColor
-  LDA #baseStart
-  CMP YCOORD
+  LDA #(baseStart)
+  CMP ycoord
   BCS loadBG
 
   \ ok we need to paint the base
   \ store Y in tempY, because we need it to offset the base
   TYA         
-  STA STORE
+  STA store
 
   LDA baseOffset  
   TAY
 
   CLC
-  ADC #baseW
+  ADC #(baseW)
   STA baseOffset
 
 
   LDA (baseTable),Y
   TAX       \ Got the colour, put it in X
-  LDA STORE \ And restore Y
+  LDA store \ And restore Y
   TAY
 RTS
 
@@ -139,7 +147,7 @@ RTS
 .bumpBaseCurCol
   INC baseCurCol
   LDA baseCurCol
-  CMP #baseW
+  CMP baseW
   BCC done
   LDA #0
   STA baseCurCol
@@ -147,31 +155,31 @@ RTS
 
 .paintNonScrolling
   LDA #20
-  STA XCOORD
+  STA xcoord
   LDA #40
-  STA YCOORD
+  STA ycoord
   JSR CALCADDRESS
 
   LDA #0
   TAY
 
   LDA #&1D
-  STA (LOC),Y
+  STA (loc),Y
 
   LDA #19
-  STA XCOORD
+  STA xcoord
   LDA #40
-  STA YCOORD
+  STA ycoord
   JSR CALCADDRESS
   LDA #0
   TAY
   LDA #&3C
-  STA (LOC),Y
+  STA (loc),Y
 RTS
 
 .resetX
   LDA #0
-  STA XCOORD
+  STA xcoord
 RTS
 
 .done
@@ -248,41 +256,41 @@ RTS
 .CALCADDRESS
   \reset vars to 0
   LDA #0
-  STA STORE+1
-  STA LOC
+  STA store+1
+  STA loc
 
-  LDA XCOORD    \ calc 8x
+  LDA xcoord    \ calc 8x
   ASL A
   ASL A
-  ROL STORE+1
+  ROL store+1
   ASL A
-  ROL STORE+1
-  STA STORE
+  ROL store+1
+  STA store
 
-  LDA YCOORD      \ calc Y1=8(Y DIV 8) (i.e. round to a multiple of 8)
+  LDA ycoord      \ calc Y1=8(Y DIV 8) (i.e. round to a multiple of 8)
   AND #&F8
 
   LSR A           \ calc 64Y1, by shifting right twice and storing it as the high bit, nifty
   LSR A
-  STA LOC+1
+  STA loc+1
 
   LSR A           \ calc 16Y1
   LSR A
-  ROR LOC     \ rotate the carry in
-  ADC LOC+1       \ calc 80Y1
+  ROR loc     \ rotate the carry in
+  ADC loc+1       \ calc 80Y1
   TAY
 
-  LDA YCOORD      \ calc Y%8
+  LDA ycoord      \ calc Y%8
   AND #7      
 
-  ADC LOC            \ tot it all up
-  ADC STORE          \ 8X low byte
+  ADC loc            \ tot it all up
+  ADC store          \ 8X low byte
   ADC scrollActual
-  STA LOC            \ low byte in loc
+  STA loc            \ low byte in loc
   TYA                \ 
-  ADC STORE+1        \ 
+  ADC store+1        \ 
   ADC scrollActual+1 \ 
-  STA LOC+1     \ 
+  STA loc+1     \ 
 
   \ Figure out if we've gone over &7FFF
   CMP #&80
@@ -292,38 +300,11 @@ RTS
 .scrollModulus
   SEC
   SBC #&50
-  STA LOC+1
+  STA loc+1
 RTS
 
-.baseData
-  OPT FNdatatable((&8*&8*2))
-RTS
+INCLUDE "base.asm"
 
-]
-NEXT PASS
+.end
 
-P. ~BLAH%
-P. ~P%
-P. ~(P%-BLAH%)
-CALL BLAH%
-END
-
-DEF FNdatatable(N)
-FOR item=1 TO N
-READ D$
-D=EVAL("&"+D$)
-?P%=D:P%=P%+1
-NEXT item
-=PASS
-
-REM Here's the base!
-REM DATA  8, C
-REM 100 (0x60) in total
-DATA  3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3
-DATA  F,F,F,C,C,C,C,C,C,C,C,F,F,F,F,F
-DATA  F,F,E,C,C,C,C,C,C,C,D,F,F,F,F,F
-DATA  F,F,C,C,C,C,C,C,C,C,F,F,F,F,F,F
-DATA  F,E,C,C,C,C,C,C,C,D,F,F,F,F,F,F
-DATA  F,C,C,C,C,C,C,C,C,F,F,F,F,F,F,F
-DATA  E,C,C,C,C,C,C,C,D,F,F,F,F,F,F,F
-DATA  3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3
+SAVE "FLAPPY",start,end

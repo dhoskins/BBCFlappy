@@ -1,0 +1,14 @@
+OSWRCH=&FFEE:OSBYTE=&FFF4
+
+ORG &1900
+
+.start
+INCLUDE "base.asm"
+LDA #22
+JSR OSWRCH
+LDA #2
+JSR OSWRCH
+RTS
+.end
+
+SAVE "TEST",start,end
