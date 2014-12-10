@@ -3,6 +3,8 @@ seed=1
 baseStart=&F7
 baseW=&10
 
+shiftKey=&81
+
 scrollOffset=&70
 xcoord=&72
 ycoord=&73
@@ -36,7 +38,7 @@ ORG &1900
   JSR paintScrolling
   JSR paintNonScrolling
 
-  \JSR checkKey
+  JSR checkKey
 
   LDA #&13
   JSR OSBYTE
@@ -56,7 +58,8 @@ JMP loop
   LDA #&3C
   STA (loc),Y
   
-  LDA #&81
+  \ Detect if the shift key is pressed
+  LDA #(shiftKey)
   LDX #&FF
   LDY #&FF
   JSR OSBYTE
@@ -133,7 +136,6 @@ RTS
   ADC #(baseW)
   STA baseOffset
 
-
   LDA (baseTable),Y
   TAX       \ Got the colour, put it in X
   LDA store \ And restore Y
@@ -147,7 +149,7 @@ RTS
 .bumpBaseCurCol
   INC baseCurCol
   LDA baseCurCol
-  CMP baseW
+  CMP #(baseW)
   BCC done
   LDA #0
   STA baseCurCol
@@ -304,6 +306,7 @@ RTS
 RTS
 
 INCLUDE "base.asm"
+INCLUDE "flappySprite.asm"
 
 .end
 
