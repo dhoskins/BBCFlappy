@@ -9,10 +9,11 @@ OSWRCH=&FFEE:OSBYTE=&FFF4
 
 seed=TIME
 
-XCOORD=&72:YCOORD=&73:REM     -- parameters to calcaddress
+XCOORD=&72
+YCOORD=&73:REM     -- parameters to calcaddress
 STORE=&74:REM and &75         -- temporary variable for calcaddress
 LOC=&76:REM and &77           -- return value for calcaddress
-REM scrollActual=&78:REM and &79
+scrollActual=&78:REM and &79
 baseTable=&7B: REM and &7C
 
 baseStart=255-8
@@ -24,20 +25,19 @@ RESTORE
 [
 OPT PASS
 
-.scrollActual
-  NOP
-  NOP
+.XCOORD
+  EQUB 0
 
 .scrollOffset
-  NOP
-  NOP
+  EQUB 0
+  EQUB 0
 
 .baseCurCol
-  NOP
+  EQUB 0
 
 .baseOffset
-  NOP
-
+  EQUB 0
+  
 .BEGIN
   \ Mode 2
   LDA #22

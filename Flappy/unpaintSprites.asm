@@ -1,0 +1,2 @@
+.unpaintSprites
+RTS
