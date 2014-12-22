@@ -11,14 +11,28 @@ ycoord=&73
 store=&74
 loc=&76
 scrollActual=&78
-baseTable=&7B
+zeroPageBitmap=&7B
 baseCurCol=&7D
 baseOffset=&7E
+shiftDown=&7F
+sprite=&80
+spriteW=&82
+spriteH=&83
+spriteY=&84
+spriteCount=&85
+
+flappyW=&10
+flappyH=&C
 
 GUARD &3000
 ORG &1900
 
 .start
+.baseTable
+  NOP:NOP
+.flappyIndex
+  NOP:NOP
+
 	LDA #22
 	JSR OSWRCH
 	LDA #2
@@ -33,40 +47,46 @@ ORG &1900
 	LDA #(base DIV 256)
 	STA baseTable+1
 
+  LDA #(flappySprite MOD 256)
+  STA flappyIndex
+  LDA #(flappySprite DIV 256)
+  STA flappyIndex+1 
+
 .loop
   JSR calcScrollActual
   JSR paintScrolling
-  JSR paintNonScrolling
+  \JSR paintNonScrolling
 
   JSR checkKey
+  JSR paintSprites
 
+  \ wait for scrolling flag
   LDA #&13
   JSR OSBYTE
 
+  JSR unpaintSprites
   JSR bumpBaseCurCol
   JSR bumpScroll
 JMP loop
 
 .checkKey
-  LDA #19
-  STA xcoord
-  LDA #20
-  STA ycoord
-  JSR CALCADDRESS
-  LDA #0
-  TAY
-  LDA #&3C
-  STA (loc),Y
-  
   \ Detect if the shift key is pressed
   LDA #(shiftKey)
   LDX #&FF
   LDY #&FF
   JSR OSBYTE
 
+  \ Set shiftDown to 0 if not pressed, 1 if pressed
+  LDA #0
+  STA shiftDown
   TXA
   CMP #&FF
-  BEQ drawPixel
+  BNE checkKeyDone
+  LDA #1
+  STA shiftDown
+RTS
+
+.checkKeyDone
 RTS
 
 .drawPixel
@@ -83,6 +103,11 @@ RTS
   STA (loc),Y
 RTS
 
+.scrollMod2
+  SEC
+  SBC #&50
+  STA loc+1
+RTS
 
 \ Paint the rightmost strip
 .paintScrolling
@@ -94,6 +119,24 @@ RTS
 \ Initialise baseOffset to be the baseCurCol
   LDA baseCurCol
   STA baseOffset
+  INC baseOffset
+  INC baseOffset
+
+\  JSR CALCADDRESS
+\  JMP paintNext8
+.bumpLoc
+\ add 0x280 to loc
+\  CLC
+\  LDA loc
+\  ADC #&80
+\  STA loc
+\  LDA loc+1
+\  ADC #2
+\  STA loc+1 
+
+\ modulo &8000
+\  CMP #&80
+\  BCS scrollMod2
 
 \ We only calculate address every 8 pixels
 \ Y is the count to the next 8
@@ -115,7 +158,7 @@ RTS
   INY
   TYA  \ compare Y to #8, need to do it via accumulator
   CMP #8
-  BEQ paintNext8
+  BEQ bumpLoc
   JMP paintInner
 RTS
 
@@ -124,8 +167,16 @@ RTS
   CMP ycoord
   BCS loadBG
 
+  JSR loadBase
+RTS
+
+.loadBG
+  LDX #&3C
+RTS
+
+.loadBase
   \ ok we need to paint the base
-  \ store Y in tempY, because we need it to offset the base
+  \ store Y in store, because we need it to offset the base
   TYA         
   STA store
 
@@ -136,16 +187,19 @@ RTS
   ADC #(baseW)
   STA baseOffset
 
-  LDA (baseTable),Y
+  LDA baseTable
+  STA zeroPageBitmap
+
+  LDA baseTable+1
+  STA zeroPageBitmap+1
+
+  LDA (zeroPageBitmap),Y
   TAX       \ Got the colour, put it in X
   LDA store \ And restore Y
   TAY
 RTS
 
-.loadBG
-  LDX #&3C
-RTS
-
+\ Gets called on every iteration to make the base column pointer bump then wrap
 .bumpBaseCurCol
   INC baseCurCol
   LDA baseCurCol
@@ -156,16 +210,16 @@ RTS
 RTS
 
 .paintNonScrolling
-  LDA #20
+  LDA #30
   STA xcoord
-  LDA #40
+  LDA #24
   STA ycoord
   JSR CALCADDRESS
 
   LDA #0
   TAY
 
-  LDA #&1D
+  LDA #&15
   STA (loc),Y
 
   LDA #19
@@ -224,90 +278,14 @@ RTS
   LDA seed 
 RTS
 
-.calcScrollActual
-  LDA scrollOffset
-  STA scrollActual
-
-  LDA scrollOffset+1
-  STA scrollActual+1
-
-  ASL scrollActual+1
-  ASL scrollActual+1
-  ASL scrollActual+1
-
-  ROL scrollActual
-  ROL scrollActual
-  ROL scrollActual
-  ROL scrollActual
-  LDA scrollActual
-  AND #7 
-  ORA scrollActual+1
-  STA scrollActual+1
-
-  LDA scrollOffset
-  STA scrollActual
-  ASL scrollActual
-  ASL scrollActual
-  ASL scrollActual
-RTS
-
-\ &3000 + 8X + 16Y1 + 64Y1 + (Y MOD 8)
-\ This thing takes XCOORD, YCOORD and translates it to the byte in memory which
-\ corresponds to that screen location.
-\ Screen location is "returned" in LOC, LOC+1
-.CALCADDRESS
-  \reset vars to 0
-  LDA #0
-  STA store+1
-  STA loc
-
-  LDA xcoord    \ calc 8x
-  ASL A
-  ASL A
-  ROL store+1
-  ASL A
-  ROL store+1
-  STA store
-
-  LDA ycoord      \ calc Y1=8(Y DIV 8) (i.e. round to a multiple of 8)
-  AND #&F8
-
-  LSR A           \ calc 64Y1, by shifting right twice and storing it as the high bit, nifty
-  LSR A
-  STA loc+1
-
-  LSR A           \ calc 16Y1
-  LSR A
-  ROR loc     \ rotate the carry in
-  ADC loc+1       \ calc 80Y1
-  TAY
-
-  LDA ycoord      \ calc Y%8
-  AND #7      
-
-  ADC loc            \ tot it all up
-  ADC store          \ 8X low byte
-  ADC scrollActual
-  STA loc            \ low byte in loc
-  TYA                \ 
-  ADC store+1        \ 
-  ADC scrollActual+1 \ 
-  STA loc+1     \ 
-
-  \ Figure out if we've gone over &7FFF
-  CMP #&80
-  BCS scrollModulus
-RTS
-
-.scrollModulus
-  SEC
-  SBC #&50
-  STA loc+1
-RTS
-
+INCLUDE "paintSprite.asm"
+INCLUDE "paintSprites.asm"
+INCLUDE "unpaintSprites.asm"
+INCLUDE "calcscrollactual.asm"
+INCLUDE "calcaddress.asm"
 INCLUDE "base.asm"
 INCLUDE "flappySprite.asm"
 
 .end
 
-SAVE "FLAPPY",start,end
+SAVE "F",start,end
