@@ -8,5 +8,6 @@ var calc = function(x, y) {
 	return pixelCalc(x, y, 0x3000).toString(16);
 }
 
-
-console.log(calc(20,24));
+for (var i=0; i<256; i+=8) {
+	console.log(calc(0,i));
+}

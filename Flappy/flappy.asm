@@ -109,6 +109,11 @@ RTS
   STA loc+1
 RTS
 
+.modulo
+  CMP #&80
+  BCS scrollMod2
+RTS
+
 \ Paint the rightmost strip
 .paintScrolling
   LDA #79
@@ -122,26 +127,25 @@ RTS
   INC baseOffset
   INC baseOffset
 
-\  JSR CALCADDRESS
-\  JMP paintNext8
+  JSR CALCADDRESS
+  JMP paintNext8
 .bumpLoc
 \ add 0x280 to loc
-\  CLC
-\  LDA loc
-\  ADC #&80
-\  STA loc
-\  LDA loc+1
-\  ADC #2
-\  STA loc+1 
+  CLC
+  LDA loc
+  ADC #&80
+  STA loc
+  LDA loc+1
+  ADC #&2
+  STA loc+1 
 
-\ modulo &8000
-\  CMP #&80
-\  BCS scrollMod2
+  JSR modulo
 
 \ We only calculate address every 8 pixels
 \ Y is the count to the next 8
 .paintNext8
-  JSR CALCADDRESS
+  \JSR CALCADDRESS
+  LDX #0
   LDY #0
 
 .paintInner
@@ -176,11 +180,10 @@ RTS
 
 .loadBase
   \ ok we need to paint the base
-  \ store Y in store, because we need it to offset the base
-  TYA         
-  STA store
-
-  LDA baseOffset  
+  \ store Y in the stack, because we need it to offset the base
+  TYA
+  PHA
+  LDA baseOffset
   TAY
 
   CLC
@@ -195,7 +198,7 @@ RTS
 
   LDA (zeroPageBitmap),Y
   TAX       \ Got the colour, put it in X
-  LDA store \ And restore Y
+  PLA
   TAY
 RTS
 
