@@ -60,14 +60,18 @@ ORG &1900
   JSR checkKey
   JSR paintSprites
 
-  \ wait for scrolling flag
-  LDA #&13
-  JSR OSBYTE
+  JSR waitFieldSync
 
   JSR unpaintSprites
   JSR bumpBaseCurCol
   JSR bumpScroll
+
 JMP loop
+
+.waitFieldSync
+  LDA #&13
+  JSR OSBYTE
+RTS
 
 .checkKey
   \ Detect if the shift key is pressed
@@ -114,23 +118,7 @@ RTS
   BCS scrollMod2
 RTS
 
-\ Paint the rightmost strip
-.paintScrolling
-  LDA #79
-  STA xcoord
-  LDA #0
-  STA ycoord
-
-\ Initialise baseOffset to be the baseCurCol
-  LDA baseCurCol
-  STA baseOffset
-  INC baseOffset
-  INC baseOffset
-
-  JSR CALCADDRESS
-  JMP paintNext8
-.bumpLoc
-\ add 0x280 to loc
+.bumpLocRow
   CLC
   LDA loc
   ADC #&80
@@ -140,11 +128,40 @@ RTS
   STA loc+1 
 
   JSR modulo
+RTS
+
+\ Paint the rightmost strip
+.paintScrolling
+
+\ Initialise baseOffset to be the baseCurCol
+  LDA baseCurCol
+  STA baseOffset
+  INC baseOffset
+  INC baseOffset
+
+  LDA #0
+  STA ycoord
+
+\ Add &278 to the scroll offset
+  CLC
+  LDA scrollActual
+  ADC #&78
+  STA loc
+
+  LDA scrollActual+1
+  ADC #&2
+  STA loc+1
+
+  JMP paintNext8
+
+.bumpLoc
+  JSR bumpLocRow
+\ add 0x280 to loc
+
 
 \ We only calculate address every 8 pixels
 \ Y is the count to the next 8
 .paintNext8
-  \JSR CALCADDRESS
   LDX #0
   LDY #0
 
