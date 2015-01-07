@@ -1,15 +1,17 @@
 \ Accepts xcoord, ycoord and sprite (+1)
 .paintSprite
-	LDA #(flappyH)
+	LDX #2
+	LDY #2
+
+	LDA (sprite),Y
 	STA spriteH
-	LDX #0
-	LDY #0
 
 \ Paints a row at a time
 	.newRow
 		LDA #0
 		STA spriteY
-		LDA #(flappyW)
+		LDY #1
+		LDA (sprite),Y
 		STA spriteCount
 		TXA
 		PHA

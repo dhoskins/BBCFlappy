@@ -21,18 +21,10 @@ spriteH=&83
 spriteY=&84
 spriteCount=&85
 
-flappyW=&10
-flappyH=&C
-
 GUARD &3000
 ORG &1900
 
 .start
-.baseTable
-  NOP:NOP
-.flappyIndex
-  NOP:NOP
-
 	LDA #22
 	JSR OSWRCH
 	LDA #2
@@ -42,15 +34,6 @@ ORG &1900
 	STA scrollOffset+1
   LDA #0
   STA scrollOffset
-	LDA #(base MOD 256)
-	STA baseTable
-	LDA #(base DIV 256)
-	STA baseTable+1
-
-  LDA #(flappySprite MOD 256)
-  STA flappyIndex
-  LDA #(flappySprite DIV 256)
-  STA flappyIndex+1 
 
 .loop
   JSR calcScrollActual
@@ -65,7 +48,6 @@ ORG &1900
   JSR unpaintSprites
   JSR bumpBaseCurCol
   JSR bumpScroll
-
 JMP loop
 
 .waitFieldSync
@@ -207,14 +189,14 @@ RTS
   ADC #(baseW)
   STA baseOffset
 
-  LDA baseTable
+  LDA #(base MOD 256)
   STA zeroPageBitmap
 
-  LDA baseTable+1
+  LDA #(base DIV 256)
   STA zeroPageBitmap+1
 
   LDA (zeroPageBitmap),Y
-  TAX       \ Got the colour, put it in X
+  TAX  \ Got the colour, put it in X
   PLA
   TAY
 RTS
@@ -303,8 +285,9 @@ INCLUDE "paintSprites.asm"
 INCLUDE "unpaintSprites.asm"
 INCLUDE "calcscrollactual.asm"
 INCLUDE "calcaddress.asm"
-INCLUDE "base.asm"
-INCLUDE "flappySprite.asm"
+INCLUDE "stashScreen.asm"
+INCLUDE "sprites/base.asm"
+INCLUDE "sprites/flappySprite.asm"
 
 .end
 
