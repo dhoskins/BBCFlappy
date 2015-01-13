@@ -19,7 +19,6 @@ sprite=&80
 spriteW=&82
 spriteH=&83
 spriteY=&84
-spriteCount=&85
 
 GUARD &3000
 ORG &1900

@@ -1,8 +1,7 @@
 \ Accepts xcoord, ycoord and sprite (+1)
 .paintSprite
 	LDX #2
-	LDY #2
-
+	LDY #1
 	LDA (sprite),Y
 	STA spriteH
 
@@ -10,9 +9,11 @@
 	.newRow
 		LDA #0
 		STA spriteY
-		LDY #1
+
+		\ Load the width value again
+		LDY #0
 		LDA (sprite),Y
-		STA spriteCount
+		STA spriteW
 		TXA
 		PHA
 		JSR CALCADDRESS
@@ -38,7 +39,7 @@
 		\ Increase the offset into sprite
 		INX
 		\ Decrease the sprite width.  If it's not 0 yet, do another column
-		DEC spriteCount
+		DEC spriteW
 		BNE newCol
 
 		\ We finished a row.  Now bump the Y coord
