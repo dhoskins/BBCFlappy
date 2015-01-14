@@ -19,6 +19,7 @@ sprite=&80
 spriteW=&82
 spriteH=&83
 spriteY=&84
+spriteStash=&85
 
 GUARD &3000
 ORG &1900
@@ -40,11 +41,12 @@ ORG &1900
   \JSR paintNonScrolling
 
   JSR checkKey
-  JSR paintSprites
+  JSR paintSpritesOn
 
   JSR waitFieldSync
 
-  JSR unpaintSprites
+  JSR paintSpritesOff
+
   JSR bumpBaseCurCol
   JSR bumpScroll
 JMP loop
