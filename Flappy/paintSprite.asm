@@ -12,11 +12,16 @@
 	STA spriteH
 
 \ Paints a row at a time
+\  
+\  X 0 1 2 3 4 5 6  Each pixel in the row is +8 from the previous
+\  X 7 8 9 A B C D  Run calcaddress for each new row to find the leftmost address
+\  X . . . . . . .
+
 	.newRow
 		LDA #0
 		STA spriteY
 
-		\ Load the width value again
+		\ Load the width value (again)
 		LDY #0
 		LDA (sprite),Y
 		STA spriteW
@@ -25,7 +30,7 @@
 		\ stack while we calculate address
 		TXA
 		PHA
-		JSR CALCADDRESS
+		JSR CALCADDRESS  \ returns loc
 		PLA
 		TAX
 		\ loc now holds the address of the leftmost pixel in the row
@@ -49,12 +54,13 @@
 		\ spriteY is the index into the row
 		LDY spriteY
 
-		\ Grab current pixel value
+		\ Grab current pixel value (i.e. what's currently on screen)
 		LDA (loc),Y
 
 		\ Stick it in to spriteStash
 		PHA
 
+		\ Restore the original Y
 		TXA
 		TAY
 
