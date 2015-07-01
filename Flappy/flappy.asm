@@ -283,7 +283,6 @@ RTS
 
 INCLUDE "paintSprite.asm"
 INCLUDE "paintSprites.asm"
-INCLUDE "unpaintSprites.asm"
 INCLUDE "calcscrollactual.asm"
 INCLUDE "calcaddress.asm"
 INCLUDE "stashScreen.asm"
