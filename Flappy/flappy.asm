@@ -1,4 +1,5 @@
 OSWRCH=&FFEE:OSBYTE=&FFF4
+sky=&3C
 seed=1
 baseStart=&F7
 baseW=&10
@@ -18,7 +19,7 @@ shiftDown=&7F
 sprite=&80
 spriteW=&82
 spriteH=&83
-spriteY=&84
+spriteX=&84
 spriteStash=&85
 
 GUARD &3000
@@ -38,15 +39,15 @@ ORG &1900
 .loop
   JSR calcScrollActual
   JSR paintScrolling
-  \JSR paintNonScrolling
+  ;JSR paintNonScrolling
 
   JSR checkKey
   JSR paintSpritesOn
 
+  
   JSR waitFieldSync
-
   JSR paintSpritesOff
-
+  
   JSR bumpBaseCurCol
   JSR bumpScroll
 JMP loop
@@ -175,7 +176,7 @@ RTS
 RTS
 
 .loadBG
-  LDX #&3C
+  LDX #sky
 RTS
 
 .loadBase
