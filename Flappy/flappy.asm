@@ -58,13 +58,13 @@ JMP loop
 RTS
 
 .checkKey
-  \ Detect if the shift key is pressed
+  ; Detect if the shift key is pressed
   LDA #(shiftKey)
   LDX #&FF
   LDY #&FF
   JSR OSBYTE
 
-  \ Set shiftDown to 0 if not pressed, 1 if pressed
+  ; Set shiftDown to 0 if not pressed, 1 if pressed
   LDA #0
   STA shiftDown
   TXA
@@ -114,10 +114,10 @@ RTS
   JSR modulo
 RTS
 
-\ Paint the rightmost strip
+; Paint the rightmost strip
 .paintScrolling
 
-\ Initialise baseOffset to be the baseCurCol
+; Initialise baseOffset to be the baseCurCol
   LDA baseCurCol
   STA baseOffset
   INC baseOffset
@@ -126,7 +126,7 @@ RTS
   LDA #0
   STA ycoord
 
-\ Add &278 to the scroll offset
+; Add &278 to the scroll offset
   CLC
   LDA scrollActual
   ADC #&78

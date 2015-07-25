@@ -102,7 +102,6 @@
 		DEY
 		; Y is now the offset into sprite that we are currently on
 		LDA (spriteStash),Y
-		;LDA #1
 		LDY spriteX
 		STA (loc),Y
 
