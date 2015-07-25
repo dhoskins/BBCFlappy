@@ -1,4 +1,5 @@
 OSWRCH=&FFEE:OSBYTE=&FFF4
+sky=&3C
 seed=1
 baseStart=&F7
 baseW=&10
@@ -18,7 +19,7 @@ shiftDown=&7F
 sprite=&80
 spriteW=&82
 spriteH=&83
-spriteY=&84
+spriteX=&84
 spriteStash=&85
 
 GUARD &3000
@@ -38,15 +39,15 @@ ORG &1900
 .loop
   JSR calcScrollActual
   JSR paintScrolling
-  \JSR paintNonScrolling
+  ;JSR paintNonScrolling
 
   JSR checkKey
   JSR paintSpritesOn
 
+  
   JSR waitFieldSync
-
   JSR paintSpritesOff
-
+  
   JSR bumpBaseCurCol
   JSR bumpScroll
 JMP loop
@@ -57,13 +58,13 @@ JMP loop
 RTS
 
 .checkKey
-  \ Detect if the shift key is pressed
+  ; Detect if the shift key is pressed
   LDA #(shiftKey)
   LDX #&FF
   LDY #&FF
   JSR OSBYTE
 
-  \ Set shiftDown to 0 if not pressed, 1 if pressed
+  ; Set shiftDown to 0 if not pressed, 1 if pressed
   LDA #0
   STA shiftDown
   TXA
@@ -113,10 +114,10 @@ RTS
   JSR modulo
 RTS
 
-\ Paint the rightmost strip
+; Paint the rightmost strip
 .paintScrolling
 
-\ Initialise baseOffset to be the baseCurCol
+; Initialise baseOffset to be the baseCurCol
   LDA baseCurCol
   STA baseOffset
   INC baseOffset
@@ -125,7 +126,7 @@ RTS
   LDA #0
   STA ycoord
 
-\ Add &278 to the scroll offset
+; Add &278 to the scroll offset
   CLC
   LDA scrollActual
   ADC #&78
@@ -175,7 +176,7 @@ RTS
 RTS
 
 .loadBG
-  LDX #&3C
+  LDX #sky
 RTS
 
 .loadBase
